@@ -10,8 +10,6 @@ from django.db import models
 from rest_framework import request
 from rest_framework.utils import model_meta
 
-from .utils import validate_email
-
 
 class UserManager(BaseUserManager):
 
@@ -63,7 +61,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
-    email = models.EmailField(max_length=50, unique=True, validators=[validate_email])
+    email = models.EmailField(max_length=50, unique=True)
     phone = models.CharField(max_length=50, unique=True)
     nickname = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=50)

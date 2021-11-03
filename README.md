@@ -2,10 +2,21 @@
 
 Python Django RestFramework - User API (Signup, Login, My Info, Change Password)
 with JWT token
-	
+
+
+## Features
+
+* Django embedded password validation
+* JWT token for further APIs
+* Custom user model
+
+
 ## Installation	
+
 ### Requirements
+
 * Python 3.5 or higher
+
 
 ### Install
 Clone git repository
@@ -15,12 +26,10 @@ Clone git repository
 Generate virtual environment (Optional)
 
 	$ virtualenv venv
-	$ cd venv
-	$ source bin/activate
+	$ source venv/bin/activate
   
 Install all required libraries
 
-	$ cd user_api
 	$ pip install -r requirements.txt
   
 Create database tables
@@ -35,6 +44,7 @@ Create admin account
 ### Start a server for development
 	$ python manage.py runserver 0.0.0.0:8000
 	
+
 ## API manual
 
 Generate account
@@ -79,3 +89,4 @@ Change password (without login with SMS verification code)
 	body = {"phone":"",
 		"code":"",
 		"password":""}
+

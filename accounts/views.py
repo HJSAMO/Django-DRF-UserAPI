@@ -1,5 +1,6 @@
 import json
 
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -24,6 +25,7 @@ class SignUpView(View):
             nickname = data['nickname']
             name = data['name']
 
+            validate_email(email)
             validate_password(password)
 
             if User.objects.filter(email=email).exists():
