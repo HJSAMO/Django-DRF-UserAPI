@@ -1,6 +1,5 @@
 import json
 
-from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -8,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.decorators import login_required
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from .authentication import generate_jwt_token
 from .models import User, SMSVerification
@@ -25,7 +25,6 @@ class SignUpView(View):
             nickname = data['nickname']
             name = data['name']
 
-            validate_email(email)
             validate_password(password)
 
             if User.objects.filter(email=email).exists():
@@ -53,7 +52,9 @@ class SignUpView(View):
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
         except ValidationError as ve:
-            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': ve.messages}, status=400)
+            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': {'password': ve.messages}}, status=400)
+        except DRFValidationError as dve:
+            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)
 
 
 class LoginView(View):
@@ -103,7 +104,9 @@ class UserInfoView(View):
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
         except ValidationError as ve:
-            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': ve.messages}, status=400)
+            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': {'password': ve.messages}}, status=400)
+        except DRFValidationError as dve:
+            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)
 
     @method_decorator(login_required)
     def get(self, request):
@@ -136,5 +139,5 @@ class VerificationView(View):
 
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
-        except ValidationError as ve:
-            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': ve.messages}, status=400)
+        except DRFValidationError as dve:
+            return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)

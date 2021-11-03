@@ -2,13 +2,17 @@ import datetime
 
 from random import randint
 
-from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+from django.core.validators import validate_email
 from django.utils import timezone
 from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser, PermissionsMixin)
 from django.db import models
 
 from rest_framework import request
 from rest_framework.utils import model_meta
+from rest_framework.exceptions import ValidationError
+
+validate_phone = RegexValidator(regex=r"^\+?[0-9() -]{8,50}$")
 
 
 class UserManager(BaseUserManager):
@@ -61,8 +65,8 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
-    email = models.EmailField(max_length=50, unique=True)
-    phone = models.CharField(max_length=50, unique=True)
+    email = models.EmailField(max_length=50, unique=True, validators=[validate_email])
+    phone = models.CharField(max_length=50, unique=True, validators=[validate_phone])
     nickname = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=50)
     created = models.DateTimeField(auto_now_add=True)
@@ -83,7 +87,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class SMSVerification(models.Model):
-    phone = models.CharField(max_length=50, primary_key=True)
+    phone = models.CharField(max_length=50, primary_key=True, validators=[validate_phone])
     code = models.CharField(max_length=6)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -120,5 +124,4 @@ class SMSVerification(models.Model):
             updated__gte=time_delta
         )
         if not result:
-            raise ValidationError("Invalid code.")
-
+            raise ValidationError(detail={"code": ["Enter the valid code."]})
