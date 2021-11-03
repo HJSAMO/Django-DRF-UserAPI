@@ -90,6 +90,9 @@ class UserInfoView(View):
             code = data['code']
             password = data['password']
 
+            if not User.objects.filter(phone=phone).exists():
+                return JsonResponse({'CODE': 'INVALID_USER'}, status=400)
+
             validate_password(password)
             SMSVerification.validate_code(phone, code)
 
