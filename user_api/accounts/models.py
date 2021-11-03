@@ -2,6 +2,7 @@ import datetime
 
 from random import randint
 
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser, PermissionsMixin)
 from django.db import models
@@ -113,11 +114,13 @@ class SMSVerification(models.Model):
         # request.post(url, json=data, headers=headers)
 
     @classmethod
-    def check_code(cls, phone, code):
+    def validate_code(cls, phone, code):
         time_delta = timezone.now() - datetime.timedelta(minutes=5)
         result = cls.objects.filter(
             phone=phone,
             code=code,
             updated__gte=time_delta
         )
-        return True if result else False
+        if not result:
+            raise ValidationError("Invalid code.")
+
