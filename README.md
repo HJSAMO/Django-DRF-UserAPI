@@ -1,8 +1,15 @@
 # Django-DRF-UserAPI
 
 Python Django RestFramework - User API (Signup, Login, My Info, Change Password)
-with JWT token
-	
+
+
+## Features
+
+* Django embedded password validation
+* JWT authentication for further APIs
+* Custom user model
+
+
 ## Installation	
 ### Requirements
 * Python 3.5 or higher
@@ -34,7 +41,8 @@ Create admin account
   
 ### Start a server for development
 	$ python manage.py runserver 0.0.0.0:8000
-	
+
+
 ## API manual
 
 Generate account
