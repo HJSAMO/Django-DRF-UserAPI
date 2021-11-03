@@ -1,9 +1,8 @@
 import re
 
+from django.core.exceptions import ValidationError
+
 
 def validate_email(email):
-    return re.match('^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email) is not None
-
-
-def validate_password(password):
-    return len(password) >= 8
+    if re.match('^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email) is None:
+        raise ValidationError('Invalid email.')
