@@ -1,6 +1,7 @@
 # Django-DRF-UserAPI
 
 Python Django RestFramework - User API (Signup, Login, My Info, Change Password)
+with JWT token
 	
 ## Installation	
 ### Requirements
