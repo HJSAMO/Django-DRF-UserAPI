@@ -22,8 +22,7 @@ Clone git repository
 Generate virtual environment (Optional)
 
 	$ virtualenv venv
-	$ cd venv
-	$ source bin/activate
+	$ source venv/bin/activate
   
 Install all required libraries
 
@@ -40,6 +39,7 @@ Create admin account
 	$ python manage.py createsuperuser
   
 ### Start a server for development
+
 	$ python manage.py runserver 0.0.0.0:8000
 
 
