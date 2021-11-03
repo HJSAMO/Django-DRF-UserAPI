@@ -84,7 +84,7 @@ Verify SMS code (by request session user)
 
 Change password (without login with SMS verification code)
 
-	url = http://localhost:8000/api/v1/accounts/verify
+	url = http://localhost:8000/api/v1/accounts/info
 	method = POST
 	body = {"phone":"",
 		"code":"",
