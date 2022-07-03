@@ -10,6 +10,11 @@ with JWT token
 * JWT token for further APIs
 * Custom user model
 
+### Handling Configuration (config.ini)
+
+* JWT Expire time
+* OTP Generation term, count
+* Login try count
 
 ## Installation	
 
@@ -49,7 +54,7 @@ Create admin account
 
 Generate account
 
-	url = http://localhost:8000/api/v1/accounts/singup
+	url = http://localhost:8000/api/v1/accounts/signup
 	method = POST
 	body = {"email" : "",
 		"phone":"",
@@ -71,22 +76,22 @@ Info (by request session user)
 
 Send SMS verification code to phone (for signup or changing password)
 
-	url = http://localhost:8000/api/v1/accounts/generate
+	url = http://localhost:8000/api/v1/accounts/generation
 	method = POST
 	body = {"phone":""}
 
 Verify SMS code (by request session user)
 
-	url = http://localhost:8000/api/v1/accounts/verify
+	url = http://localhost:8000/api/v1/accounts/verification
 	method = POST
 	body = {"phone":"",
-		"code":""}
+		"otp":""}
 
 Change password (without login with SMS verification code)
 
 	url = http://localhost:8000/api/v1/accounts/info
 	method = POST
 	body = {"phone":"",
-		"code":"",
+		"otp":"",
 		"password":""}
 

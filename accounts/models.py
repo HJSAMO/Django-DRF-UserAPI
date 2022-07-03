@@ -1,18 +1,13 @@
-import datetime
+import random
+import string
 
-from random import randint
-
+from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser, PermissionsMixin)
 from django.core.validators import RegexValidator
 from django.core.validators import validate_email
-from django.utils import timezone
-from django.contrib.auth.models import (BaseUserManager, AbstractBaseUser, PermissionsMixin)
 from django.db import models
-
-from rest_framework import request
 from rest_framework.utils import model_meta
-from rest_framework.exceptions import ValidationError
 
-validate_phone = RegexValidator(regex=r"^\+?[0-9() -]{8,50}$")
+validate_phone = RegexValidator(regex=r"\d{3}-\d{3,4}-\d{4}")
 
 
 class UserManager(BaseUserManager):
@@ -86,42 +81,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_table = 'users'
 
 
-class SMSVerification(models.Model):
-    phone = models.CharField(max_length=50, primary_key=True, validators=[validate_phone])
-    code = models.CharField(max_length=6)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
+def new_otp():
+    return ''.join(random.choice(string.ascii_letters + string.digits + '!@#$%^*?') for _ in range(10))
+
+
+class Authentication(models.Model):
+    key = models.CharField(max_length=100, primary_key=True)
+    otp = models.CharField(max_length=10, default=new_otp)
+    validate_cnt = models.IntegerField(default=0)
+    generate_cnt = models.IntegerField(default=0)
+    generated_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'verifications'
-
-    def save(self, *args, **kwargs):
-        self.code = randint(100000, 1000000)
-        super().save(*args, **kwargs)
-        self.send_sms()
-
-    def send_sms(self):
-        # TODO : Connect SMS Server
-        url = ''
-        data = {
-            "type": "SMS",
-            "from": "",
-            "to": self.phone,
-            "content": "Verification code [{}]".format(self.code)
-
-        }
-        headers = {
-
-        }
-        # request.post(url, json=data, headers=headers)
-
-    @classmethod
-    def validate_code(cls, phone, code):
-        time_delta = timezone.now() - datetime.timedelta(minutes=5)
-        result = cls.objects.filter(
-            phone=phone,
-            code=code,
-            updated__gte=time_delta
-        )
-        if not result:
-            raise ValidationError(detail={"code": ["Enter the valid code."]})
+        db_table = 'authentication'

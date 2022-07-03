@@ -1,17 +1,23 @@
 import json
 
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.core.exceptions import ValidationError
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.decorators import login_required
 from rest_framework.exceptions import ValidationError as DRFValidationError
 
-from .authentication import generate_jwt_token
-from .models import User, SMSVerification
+from common.utils.error import APIError
+from user_api.settings import LOGIN_LIMIT
+from .authentication import generate_jwt_token, check_try_to_login, lock_user, reset_login_cache, validate_otp_cache, \
+    reset_otp_cache, generate_otp_cache, send_sms
+from .models import User, UserManager
 from .serializers import UserSerializer, UserInfoSerializer
+
+user_manager = UserManager()
+user_entity = User.objects
 
 
 class SignUpView(View):
@@ -19,7 +25,7 @@ class SignUpView(View):
         try:
             data = json.loads(request.body)
 
-            email = data['email']
+            email = user_manager.normalize_email(data['email'])
             phone = data['phone']
             password = data['password']
             nickname = data['nickname']
@@ -55,6 +61,8 @@ class SignUpView(View):
             return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': {'password': ve.messages}}, status=400)
         except DRFValidationError as dve:
             return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)
+        except APIError as e:
+            return JsonResponse({'CODE': e.value}, status=500)
 
 
 class LoginView(View):
@@ -69,16 +77,28 @@ class LoginView(View):
                 email_or_phone = email_by_phone[0].email
 
             user = authenticate(email=email_or_phone, password=password)
+            login_try_cnt = check_try_to_login(email_or_phone)
 
+            if login_try_cnt >= LOGIN_LIMIT:
+                user = user_entity.get(email=email_or_phone)
+                lock_user(user)
             if user is None:
                 return JsonResponse({'CODE': 'INVALID_USER'}, status=400)
+            if not user.is_active:
+                return JsonResponse({'CODE': 'LOCKED_USER'}, status=400)
 
             login_user = generate_jwt_token(user)
+            reset_login_cache(user.email)
             login(request, user)
 
-            return JsonResponse({'USER': login_user, 'CODE': 'SUCCESS'}, status=200)
+            if user.is_superuser is True or user.is_active:
+                return JsonResponse({'USER': login_user, 'CODE': 'SUCCESS'}, status=200)
+            else:
+                return JsonResponse({'CODE': 'UNAUTHORIZED'}, status=401)
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
+        except APIError as e:
+            return JsonResponse({'CODE': e.value}, status=500)
 
 
 class UserInfoView(View):
@@ -87,22 +107,24 @@ class UserInfoView(View):
             data = json.loads(request.body)
 
             phone = data['phone']
-            code = data['code']
+            otp = data['otp']
             password = data['password']
 
             if not User.objects.filter(phone=phone).exists():
                 return JsonResponse({'CODE': 'INVALID_USER'}, status=400)
 
             validate_password(password)
-            SMSVerification.validate_code(phone, code)
-
             user = User.objects.get(phone=phone)
-            user_serializer = UserSerializer(user, data={'password': password}, partial=True)
-            if user_serializer.is_valid(raise_exception=True):
-                user_serializer.save()
-                return JsonResponse({'CODE': 'SUCCESS'}, status=200)
-            else:
-                return JsonResponse({'CODE': 'FAIL'}, status=400)
+
+            validated = validate_otp_cache(phone, otp, user)
+            if validated:
+                reset_otp_cache(phone)
+                user_serializer = UserSerializer(
+                    user, data={'password': password, 'is_active': True}, partial=True)
+                if user_serializer.is_valid(raise_exception=True):
+                    user_serializer.save()
+                    return JsonResponse({'CODE': 'SUCCESS'}, status=200)
+            return JsonResponse({'CODE': 'FAIL'}, status=400)
 
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
@@ -110,6 +132,8 @@ class UserInfoView(View):
             return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': {'password': ve.messages}}, status=400)
         except DRFValidationError as dve:
             return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)
+        except APIError as e:
+            return JsonResponse({'CODE': e.value}, status=500)
 
     @method_decorator(login_required)
     def get(self, request):
@@ -125,10 +149,15 @@ class GenerationView(View):
         try:
             data = json.loads(request.body)
             phone = data['phone']
-            SMSVerification.objects.update_or_create(phone=phone)
-            return JsonResponse({'CODE': 'SUCCESS'}, status=200)
+            otp = generate_otp_cache(phone)
+            send_sms(phone, otp)
+            return JsonResponse({'temp_otp_for_test': otp, 'CODE': 'SUCCESS'}, status=200)
+            # TODO : Change logic after SMS Server Connected
+            # return JsonResponse({'CODE': 'SUCCESS'}, status=200)
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
+        except APIError as e:
+            return JsonResponse({'CODE': e.value}, status=500)
 
 
 class VerificationView(View):
@@ -136,11 +165,13 @@ class VerificationView(View):
         try:
             data = json.loads(request.body)
             phone = data['phone']
-            code = data['code']
-            SMSVerification.validate_code(phone, code)
+            otp = data['otp']
+            validate_otp_cache(phone, otp)
             return JsonResponse({'CODE': 'SUCCESS'}, status=200)
 
         except KeyError:
             return JsonResponse({'CODE': 'KEY_ERROR'}, status=400)
         except DRFValidationError as dve:
             return JsonResponse({'CODE': 'VALIDATION_ERROR', 'MESSAGE': dve.detail}, status=400)
+        except APIError as e:
+            return JsonResponse({'CODE': e.value}, status=500)
